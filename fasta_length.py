@@ -10,7 +10,7 @@ def main():
         with open(arg, 'r') as fasta:
             seqs = read_fasta(fasta)
             for seq in seqs:
-                pass
+                print("reading this seq: " + str(seq))
 
 ##################################3
 
