@@ -3,29 +3,30 @@ import sys
 import numpy as np
 from src.fasta_reader import read_fasta
 
-def print_histogram(lengths, bin_size):
-    histogram = {}
-    max_length = max(lengths)
+def counts_histogram(bin_size, lengths_dict):
+    counts_dict = {}
+    proportions_dict = {}
+    # get max of all lengths lists
+    all_v = []
+    for keys, values in lengths_dict.items():
+        for value in values:
+            all_v.append(value)
+    max_length = max(all_v)
+    # make list of bins based on max length and bin size
+    # for test will be [0, 100, 200]
     bins = []
     i = 0
     while i*bin_size < max_length + bin_size:
-        bins.append(i*bin_size)
-        i += 1
-    histo = np.histogram(lengths, bins)
-    print(histo[0])
+       bins.append(i*bin_size)
+       i += 1
+    for keys, values in lengths_dict.items():
+        for value in values:
+            counts = np.histogram(values, bins)
+            counts_sum = sum(counts[0])
+            counts_dict[keys] = counts[0].tolist()
+            proportions_dict[keys] = ((counts[0]/counts_sum)*100).tolist()
 
-    #for length in lengths:
-        #if length in histogram:
-            #histogram[length] += 1
-        #else:
-            #histogram[length] = 1
-    return histogram
-
-def histogram(bin_size, lengths_dict):
-    counts_dict = {}
-    # get max of all lengths lists
-    # make list of bins based on max length and bin size
-    # for test will be [0, 100, 200]
+    # print(counts_dict)
     # for each taxa in the dictionary ...
     #   np.hist(lengths, bins) where lengths is lengths_dict[taxa]
     #   first result is counts
@@ -39,19 +40,30 @@ def histogram(bin_size, lengths_dict):
     #      print(v + "\n")
     #    (now add "\n")
 
-    # taxa = dict.keys()
-    # header = "\t".join(taxa)
-    # header += "\n"
+    # for k, v in lengths_dict.items():
+    #    counts = np.histogram(v, bins) 
 
-    return "here you go"
+    keys = list(counts_dict.keys())
+    values = list(counts_dict.values())
+    keys.insert(0, "Bins")
+    values.insert(0, bins)
+    counts_output = '\t'.join(keys)
+    counts_output += '\n'
+    counts_output += '\n'.join(['\t'.join([str(i) for i in cols]) for cols in zip(*values)])
+    proportions = list(proportions_dict.values())
+    proportions.insert(0, bins)
+    proportions_output = '\t'.join(keys)
+    proportions_output += '\n'
+    proportions_output += '\n'.join(['\t'.join([str(i) for i in cols]) for cols in zip(*proportions)])
+    return (counts_output, proportions_output)
 
 def run_test():
     test_dict = {"taxon1": [150], "taxon2": [50, 105, 110, 115, 250, 251]}
     bin_size = 100
     expected = "bins\ttaxon1\ttaxon2\n"
-    expected += "0\t0\t1\n"
-    expected += "100\t1\t3\n"
-    expected += "200\t0\t2\n"
+    expected += "0\t0\t16.6\n"
+    expected += "100\t100\t50\n"
+    expected += "200\t0\t33.3\n"
     actual = histogram(bin_size, test_dict)
     print(expected)
     print(actual)
@@ -65,20 +77,22 @@ def main():
             run_test()
             sys.exit()
         else:
-            sys.stderr.write("Usage: fasta_length.py <bin_size> <fasta1> <fasta2> <fasta3> ...\n")
+            sys.stderr.write("Usage: fasta_length.py <output_name> <bin_size> <fasta1> <fasta2> <fasta3> ...\n")
             sys.exit()
 
-    if len(sys.argv) < 3:
-        sys.stderr.write("Usage: fasta_length.py <bin_size> <fasta1> <fasta2> <fasta3> ...\n")
+    if len(sys.argv) < 4:
+        sys.stderr.write("Usage: fasta_length.py <output_name> <bin_size> <fasta1> <fasta2> <fasta3> ...\n")
         sys.exit()
         
-    bin_size = int(sys.argv[1])
-    
+    prefix = sys.argv[1]
+
+    bin_size = int(sys.argv[2])
+
     #Create dictionary
     All_taxa_read_lengths = {}
     max_length = 0
     
-    for arg in sys.argv[2:]:
+    for arg in sys.argv[3:]:
         #Take name of argument (all words before .fa or .fasta) and turn that into a variable
         taxa = arg.strip().split(".")[0]
         #Create list for read lengths associated with taxa
@@ -96,15 +110,19 @@ def main():
                 this_max = max(taxa_read_length_list)
                 if this_max > max_length:
                     max_length = this_max
-    print("max length is " + str(max_length))
-    #Add key and list to dictionary
-    #print (All_taxa_read_lengths)
-    print_histogram(taxa_read_length_list, bin_size)
+    # Add key and list to dictionary
+    counts_out = prefix + "_length_counts.txt"
+    
+    counts_output, proportions_output = counts_histogram(bin_size, All_taxa_read_lengths) 
+    with open(counts_out, "w") as first:
+        first.write(str(counts_output))
 
-##################################3
+    proportions_out = prefix + "_length_proportions.txt"
+
+    with open(proportions_out, "w") as second:
+        second.write(str(proportions_output))
+
+###################################
 
 if __name__ == "__main__":
     main()
-
-#Make and plot histogram with plt.hist()
-#plst.hist(All_taxa_read_lengths, bins=bin_size)
